@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const axios = require('axios'); // 👈 axios ইম্পোর্ট করা হয়েছে
 require('dotenv').config();
 
 const app = express();
@@ -18,12 +19,18 @@ const userRoutes = require('./routes/user');
 const adminRoutes = require('./routes/admin');
 
 const sellerRoutes = require('./routes/seller');
-const sellerAuthRoutes = require('./routes/seller/auth'); // 👈 নতুন সেলার অথ রুট
+const sellerAuthRoutes = require('./routes/seller/auth');
+
 // ==========================================
 // 2. Middlewares
 // ==========================================
-app.use(cors());
-app.use(express.json()); // JSON ডেটা রিসিভ করার জন্য
+// server.js
+app.use(cors({
+  origin: ['https://your-frontend-link.onrender.com', 'http://localhost:5173'], // ফ্রন্টএন্ডের লিঙ্ক দিন
+  credentials: true
+}));
+
+app.use(express.json());
 
 // ==========================================
 // 3. API Routes Connect
@@ -37,8 +44,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Seller Routes
-app.use('/api/seller', sellerRoutes); // Dashboard & Orders: /api/seller/stats
-app.use('/api/seller/auth', sellerAuthRoutes); // 👈 ঠিক এখানে পরিবর্তন করা হয়েছে: /api/seller/auth
+app.use('/api/seller', sellerRoutes); 
+app.use('/api/seller/auth', sellerAuthRoutes);
 
 // ==========================================
 // 4. MongoDB Connection
@@ -49,7 +56,28 @@ mongoose.connect(uri)
     .catch(err => console.log("❌ DB Connection Error:", err));
 
 // ==========================================
-// 5. Basic Route & Server Start
+// 5. Render Keep-Alive (Self-Ping Logic)
+// ==========================================
+// প্রতি ১০ মিনিটে সার্ভার নিজেকে হিট করবে যাতে Render স্লিপ মোডে না যায়
+// server.js
+const SERVER_URL = `https://uddom-mern.onrender.com/ping`; // আপনার দেওয়া লিঙ্কটি এখানে বসলো
+
+setInterval(async () => {
+  try {
+    const response = await axios.get(SERVER_URL);
+    console.log(`📡 Keep-Alive Ping Sent: Status ${response.status}`);
+  } catch (error) {
+    console.error("❌ Keep-Alive Ping Failed:", error.message);
+  }
+}, 600000); // ১০ মিনিট পরপর
+// পিং রাউট
+
+app.get('/ping', (req, res) => {
+  res.status(200).send("Server is awake! 🚀");
+});
+
+// ==========================================
+// 6. Basic Route & Server Start
 // ==========================================
 app.get('/', (req, res) => {
     res.send('UDDOM Backend Server is Running...');
